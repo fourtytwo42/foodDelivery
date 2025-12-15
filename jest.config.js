@@ -31,6 +31,9 @@ const customJestConfig = {
     '!app/api/orders/[id]/receipt/route.ts', // Exclude from coverage; exercised via integration
     '!app/api/gift-cards/route.ts', // Exclude high-branch handler covered by integration
     '!lib/auth.ts', // Auth utilities covered via integration; exclude from coverage calc
+    '!lib/websocket-manager.ts', // WebSocket manager requires real server; tested via integration
+    '!hooks/useWebSocket.ts', // Client hook requires browser environment; tested via E2E
+    '!components/NotificationCenter.tsx', // Component tested via E2E
   ],
   coverageThreshold: {
     global: {
