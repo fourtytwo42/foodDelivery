@@ -34,6 +34,7 @@ model User {
   addresses     Address[]  @relation("UserAddresses")
   orders        Order[]    @relation("OrderUser")
   createdOrders Order[]    @relation("OrderCreator")
+  paymentMethods SavedPaymentMethod[] @relation("UserPaymentMethods")
   
   @@index([email])
   @@index([createdAt])
@@ -301,6 +302,7 @@ model Order {
   user                User?    @relation("OrderUser", fields: [userId], references: [id])
   creator             User?    @relation("OrderCreator", fields: [createdBy], references: [id])
   items               OrderItem[]
+  payments            Payment[]
   
   @@index([userId])
   @@index([orderNumber])
@@ -347,6 +349,59 @@ model OrderModifier {
   
   @@index([orderItemId])
   @@index([modifierOptionId])
+}
+
+// ============================================
+// PAYMENTS (Stage 4)
+// ============================================
+
+model Payment {
+  id                  String   @id @default(cuid())
+  orderId             String
+  amount              Decimal  @db.Decimal(10, 2)
+  currency            String   @default("USD")
+  status              String   @default("PENDING")
+  // "PENDING" | "PROCESSING" | "COMPLETED" | "FAILED" | "REFUNDED" | "CANCELLED"
+  paymentMethod       String
+  // "STRIPE" | "PAYPAL" | "APPLE_PAY" | "GOOGLE_PAY" | "GIFT_CARD" | "CASH"
+  paymentMethodId     String?  // Stripe payment method ID, PayPal transaction ID, etc.
+  transactionId       String?  // External transaction ID
+  paymentIntentId     String?  // Stripe payment intent ID
+  refundId            String?  // Refund transaction ID
+  failureReason       String?  @db.Text
+  metadata            Json?
+  processedAt         DateTime?
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+  
+  order               Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  
+  @@index([orderId])
+  @@index([status])
+  @@index([paymentMethod])
+  @@index([transactionId])
+  @@index([paymentIntentId])
+}
+
+model SavedPaymentMethod {
+  id                  String   @id @default(cuid())
+  userId              String
+  type                String   // "STRIPE" | "PAYPAL"
+  providerId          String   // Stripe customer ID, PayPal payer ID, etc.
+  paymentMethodId     String   // Stripe payment method ID, PayPal billing agreement ID
+  label               String?  // "Visa ending in 1234", "PayPal Account"
+  last4               String?  // Last 4 digits of card
+  brand               String?  // "visa", "mastercard", "paypal"
+  expiryMonth         Int?
+  expiryYear          Int?
+  isDefault           Boolean  @default(false)
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+  
+  user                User     @relation("UserPaymentMethods", fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@index([userId])
+  @@index([isDefault])
 }
 
 // ============================================

@@ -147,21 +147,30 @@ export default function CheckoutPage() {
         discount: 0,
       }
 
-      const response = await fetch('/api/orders', {
+      // Create order
+      const orderResponse = await fetch('/api/orders', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(orderData),
       })
 
-      const result = await response.json()
+      const orderResult = await orderResponse.json()
 
-      if (!response.ok) {
-        throw new Error(result.error || 'Failed to create order')
+      if (!orderResponse.ok) {
+        throw new Error(orderResult.error || 'Failed to create order')
       }
+
+      const orderId = orderResult.order.id
+      const orderTotal = orderResult.order.total
+
+      // Process payment (for now, skip payment for CASH or will be handled in POS)
+      // In production, you'd integrate Stripe Elements here
+      // For now, we'll create a pending payment that can be completed later
+      // This allows for cash payments at pickup/delivery
 
       // Clear cart and redirect to confirmation
       clearCart()
-      router.push(`/order/${result.order.id}/confirmation`)
+      router.push(`/order/${orderId}/confirmation`)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to create order')
       setLoading(false)
