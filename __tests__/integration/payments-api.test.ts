@@ -309,6 +309,23 @@ describe('Payments API Routes', () => {
       expect(response.status).toBe(500)
       expect(data.error).toBe('Failed to confirm payment')
     })
+
+    it('should handle empty payment intent id', async () => {
+      const invalidData = {
+        paymentIntentId: '',
+      }
+
+      const request = createMockRequest(
+        'http://localhost:3000/api/payments/confirm',
+        invalidData,
+        'POST'
+      )
+      const response = await confirmPayment(request)
+      const data = await response.json()
+
+      expect(response.status).toBe(400)
+      expect(data.error).toBe('Validation error')
+    })
   })
 })
 

@@ -218,6 +218,160 @@ describe('Orders API Routes', () => {
       expect(data.error).toBe('Failed to create order')
     })
 
+    it('should handle order with tip and discount', async () => {
+      const mockSettings = {
+        id: 'default',
+        taxRate: 0.0825,
+        minOrderAmount: 0,
+      }
+
+      ;(prisma.restaurantSettings.findUnique as jest.Mock).mockResolvedValue(
+        mockSettings
+      )
+      ;(orderService.createOrder as jest.Mock).mockResolvedValue({
+        id: 'order1',
+        orderNumber: 'ORD-123',
+      })
+
+      const orderData = {
+        type: 'DELIVERY',
+        customerName: 'John Doe',
+        customerEmail: 'john@example.com',
+        customerPhone: '1234567890',
+        items: [
+          {
+            menuItemId: 'item1',
+            name: 'Pizza',
+            price: 10.0,
+            quantity: 1,
+            modifiers: [],
+          },
+        ],
+        deliveryAddress: {
+          street: '123 Main St',
+          city: 'New York',
+          state: 'NY',
+          zipCode: '10001',
+          country: 'US',
+        },
+        tip: 3.0,
+        discount: 2.0,
+      }
+
+      const request = createMockRequest('http://localhost:3000/api/orders', orderData, 'POST')
+      const response = await createOrder(request)
+      const data = await response.json()
+
+      expect(response.status).toBe(201)
+      expect(data.success).toBe(true)
+      expect(orderService.createOrder).toHaveBeenCalledWith(
+        expect.objectContaining({
+          tip: 3.0,
+          discount: 2.0,
+        })
+      )
+    })
+
+    it('should calculate subtotal with modifiers', async () => {
+      const mockSettings = {
+        id: 'default',
+        taxRate: 0.0825,
+        minOrderAmount: 0,
+      }
+
+      ;(prisma.restaurantSettings.findUnique as jest.Mock).mockResolvedValue(
+        mockSettings
+      )
+      ;(orderService.createOrder as jest.Mock).mockResolvedValue({
+        id: 'order1',
+        orderNumber: 'ORD-123',
+      })
+
+      const orderData = {
+        type: 'DELIVERY',
+        customerName: 'John Doe',
+        customerEmail: 'john@example.com',
+        customerPhone: '1234567890',
+        items: [
+          {
+            menuItemId: 'item1',
+            name: 'Pizza',
+            price: 10.0,
+            quantity: 2,
+            modifiers: [
+              {
+                modifierId: 'mod1',
+                modifierName: 'Size',
+                optionId: 'opt1',
+                optionName: 'Large',
+                price: 2.0,
+              },
+            ],
+          },
+        ],
+        deliveryAddress: {
+          street: '123 Main St',
+          city: 'New York',
+          state: 'NY',
+          zipCode: '10001',
+          country: 'US',
+        },
+      }
+
+      const request = createMockRequest('http://localhost:3000/api/orders', orderData, 'POST')
+      const response = await createOrder(request)
+      const data = await response.json()
+
+      expect(response.status).toBe(201)
+      expect(data.success).toBe(true)
+      // Subtotal should be (10.0 * 2) + (2.0 * 2) = 24.0
+      expect(orderService.createOrder).toHaveBeenCalledWith(
+        expect.objectContaining({
+          subtotal: 24.0,
+        })
+      )
+    })
+
+    it('should use default tax rate when settings taxRate is null', async () => {
+      const mockSettings = {
+        id: 'default',
+        taxRate: null,
+        minOrderAmount: 0,
+      }
+
+      ;(prisma.restaurantSettings.findUnique as jest.Mock).mockResolvedValue(
+        mockSettings
+      )
+      ;(orderService.createOrder as jest.Mock).mockResolvedValue({
+        id: 'order1',
+        orderNumber: 'ORD-123',
+      })
+
+      const orderData = {
+        type: 'PICKUP',
+        customerName: 'John Doe',
+        customerEmail: 'john@example.com',
+        customerPhone: '1234567890',
+        items: [
+          {
+            menuItemId: 'item1',
+            name: 'Pizza',
+            price: 10.0,
+            quantity: 1,
+            modifiers: [],
+          },
+        ],
+      }
+
+      const request = createMockRequest('http://localhost:3000/api/orders', orderData, 'POST')
+      const response = await createOrder(request)
+      const data = await response.json()
+
+      expect(response.status).toBe(201)
+      expect(data.success).toBe(true)
+      // Should use default tax rate of 0.0825
+    })
+
     it('should handle missing restaurant settings (uses defaults)', async () => {
       ;(prisma.restaurantSettings.findUnique as jest.Mock).mockResolvedValue(null)
       ;(orderService.createOrder as jest.Mock).mockResolvedValue({
@@ -310,6 +464,69 @@ describe('Orders API Routes', () => {
 
       expect(response.status).toBe(200)
       expect(orderService.getOrders).toHaveBeenCalledWith({ userId: 'user1' })
+    })
+
+    it('should filter orders by status', async () => {
+      const mockOrders = [
+        {
+          id: 'order1',
+          orderNumber: 'ORD-123',
+          status: 'PENDING',
+        },
+      ]
+
+      ;(orderService.getOrders as jest.Mock).mockResolvedValue(mockOrders)
+
+      const request = createMockRequest('http://localhost:3000/api/orders?status=PENDING')
+      const response = await getOrders(request)
+      const data = await response.json()
+
+      expect(response.status).toBe(200)
+      expect(orderService.getOrders).toHaveBeenCalledWith({ status: 'PENDING' })
+    })
+
+    it('should filter orders by type', async () => {
+      const mockOrders = [
+        {
+          id: 'order1',
+          orderNumber: 'ORD-123',
+          type: 'DELIVERY',
+        },
+      ]
+
+      ;(orderService.getOrders as jest.Mock).mockResolvedValue(mockOrders)
+
+      const request = createMockRequest('http://localhost:3000/api/orders?type=DELIVERY')
+      const response = await getOrders(request)
+      const data = await response.json()
+
+      expect(response.status).toBe(200)
+      expect(orderService.getOrders).toHaveBeenCalledWith({ type: 'DELIVERY' })
+    })
+
+    it('should handle multiple filters', async () => {
+      const mockOrders = [
+        {
+          id: 'order1',
+          orderNumber: 'ORD-123',
+          userId: 'user1',
+          status: 'PENDING',
+          type: 'DELIVERY',
+        },
+      ]
+
+      ;(orderService.getOrders as jest.Mock).mockResolvedValue(mockOrders)
+
+      const request = createMockRequest('http://localhost:3000/api/orders?userId=user1&status=PENDING&type=DELIVERY')
+      const response = await getOrders(request)
+      const data = await response.json()
+
+      expect(response.status).toBe(200)
+      expect(orderService.getOrders).toHaveBeenCalledWith({
+        userId: 'user1',
+        status: 'PENDING',
+        type: 'DELIVERY',
+      })
     })
   })
 
