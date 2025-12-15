@@ -76,9 +76,13 @@ export function getOrderCalculations(
 /**
  * Convert Decimal to number for calculations
  */
-export function decimalToNumber(value: Decimal | number | string): number {
+export function decimalToNumber(value: Decimal | number | string | { toNumber?: () => number }): number {
   if (typeof value === 'number') return value
   if (typeof value === 'string') return parseFloat(value)
+  // Handle Prisma Decimal or mock objects with toNumber method
+  if (value && typeof value === 'object' && typeof (value as any).toNumber === 'function') {
+    return (value as any).toNumber()
+  }
   return parseFloat(value.toString())
 }
 
