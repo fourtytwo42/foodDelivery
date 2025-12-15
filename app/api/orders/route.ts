@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { orderService } from '@/services/order-service'
+import { deliveryService } from '@/services/delivery-service'
 import { getOrderCalculations } from '@/lib/calculations'
 import { prisma } from '@/lib/prisma'
 import { z } from 'zod'
@@ -112,6 +113,20 @@ export async function POST(request: NextRequest) {
       specialInstructions: data.specialInstructions,
       deliveryInstructions: data.deliveryInstructions,
     })
+
+    // Create delivery record for delivery orders
+    if (data.type === 'DELIVERY' && data.deliveryAddress) {
+      try {
+        await deliveryService.createDelivery({
+          orderId: order.id,
+          deliveryAddress: data.deliveryAddress,
+          deliveryNotes: data.deliveryInstructions,
+        })
+      } catch (deliveryError) {
+        // Log error but don't fail the order creation
+        console.error('Error creating delivery record:', deliveryError)
+      }
+    }
 
     return NextResponse.json({ success: true, order }, { status: 201 })
   } catch (error) {

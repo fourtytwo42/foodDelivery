@@ -35,6 +35,7 @@ model User {
   orders        Order[]    @relation("OrderUser")
   createdOrders Order[]    @relation("OrderCreator")
   paymentMethods SavedPaymentMethod[] @relation("UserPaymentMethods")
+  deliveries    Delivery[] @relation("DriverDeliveries")
   
   @@index([email])
   @@index([createdAt])
@@ -303,6 +304,7 @@ model Order {
   creator             User?    @relation("OrderCreator", fields: [createdBy], references: [id])
   items               OrderItem[]
   payments            Payment[]
+  delivery            Delivery?
   
   @@index([userId])
   @@index([orderNumber])
@@ -402,6 +404,54 @@ model SavedPaymentMethod {
   
   @@index([userId])
   @@index([isDefault])
+}
+
+// ============================================
+// DELIVERIES (Stage 6)
+// ============================================
+
+model Delivery {
+  id                  String   @id @default(cuid())
+  orderId             String   @unique
+  driverId            String?
+  status              String   @default("PENDING")
+  // "PENDING" | "ASSIGNED" | "ACCEPTED" | "PICKED_UP" | "IN_TRANSIT" | "DELIVERED" | "FAILED"
+  
+  // Address
+  deliveryAddress     Json     // Full address JSON
+  latitude            Float?
+  longitude           Float?
+  
+  // Driver Location (for tracking)
+  driverLatitude      Float?
+  driverLongitude     Float?
+  driverLocationUpdatedAt DateTime?
+  
+  // Estimated times
+  estimatedPickupTime DateTime?
+  estimatedDeliveryTime DateTime?
+  actualPickupTime    DateTime?
+  actualDeliveryTime  DateTime?
+  
+  // Distance
+  distance            Float?   // Miles
+  routeOptimized      Boolean  @default(false)
+  
+  // Notes
+  deliveryNotes       String?  @db.Text
+  driverNotes         String?  @db.Text
+  
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+  
+  // Relations
+  order               Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  driver              User?    @relation("DriverDeliveries", fields: [driverId], references: [id])
+  
+  @@index([orderId])
+  @@index([driverId])
+  @@index([status])
+  @@index([estimatedDeliveryTime])
 }
 
 // ============================================
