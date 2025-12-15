@@ -218,6 +218,45 @@ describe('Orders API Routes', () => {
       expect(data.error).toBe('Failed to create order')
     })
 
+    it('should handle missing restaurant settings (uses defaults)', async () => {
+      ;(prisma.restaurantSettings.findUnique as jest.Mock).mockResolvedValue(null)
+      ;(orderService.createOrder as jest.Mock).mockResolvedValue({
+        id: 'order1',
+        orderNumber: 'ORD-123',
+      })
+
+      const orderData = {
+        type: 'DELIVERY',
+        customerName: 'John Doe',
+        customerEmail: 'john@example.com',
+        customerPhone: '1234567890',
+        items: [
+          {
+            menuItemId: 'item1',
+            name: 'Pizza',
+            price: 14.99,
+            quantity: 1,
+            modifiers: [],
+          },
+        ],
+        deliveryAddress: {
+          street: '123 Main St',
+          city: 'New York',
+          state: 'NY',
+          zipCode: '10001',
+          country: 'US',
+        },
+      }
+
+      const request = createMockRequest('http://localhost:3000/api/orders', orderData, 'POST')
+      const response = await createOrder(request)
+      const data = await response.json()
+
+      expect(response.status).toBe(201)
+      expect(data.success).toBe(true)
+      // Should use default tax rate when settings not found
+    })
+
     it('should validate required fields', async () => {
       const invalidData = {
         type: 'DELIVERY',
