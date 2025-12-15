@@ -74,10 +74,7 @@ export default function MenuPage() {
     }
   }
 
-  const handleAddToCart = (itemId: string) => {
-    // TODO: Implement cart functionality in Stage 3
-    console.log('Add to cart:', itemId)
-  }
+  // Cart functionality is now handled by MenuItemCard using cart store
 
   const filteredItems = items.filter((item) => {
     if (selectedCategory) {
@@ -151,8 +148,16 @@ export default function MenuPage() {
             {filteredItems.map((item) => (
               <MenuItemCard
                 key={item.id}
-                {...item}
-                onAddToCart={handleAddToCart}
+                id={item.id}
+                menuItemId={item.id}
+                name={item.name}
+                description={item.description}
+                image={item.image}
+                price={item.price}
+                featured={item.featured}
+                popular={item.popular}
+                dietaryTags={item.dietaryTags}
+                allergens={item.allergens}
               />
             ))}
           </div>

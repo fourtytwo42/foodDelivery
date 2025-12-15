@@ -1,7 +1,10 @@
 'use client'
 
+import { useCartStore } from '@/stores/cart-store'
+
 interface MenuItemCardProps {
   id: string
+  menuItemId?: string // For cart integration
   name: string
   description?: string | null
   image?: string | null
@@ -16,6 +19,7 @@ interface MenuItemCardProps {
 
 export function MenuItemCard({
   id,
+  menuItemId,
   name,
   description,
   image,
@@ -27,6 +31,28 @@ export function MenuItemCard({
   onAddToCart,
   showAddButton = true,
 }: MenuItemCardProps) {
+  const addItem = useCartStore((state) => state.addItem)
+  const openCart = useCartStore((state) => state.openCart)
+  
+  const priceNum = typeof price === 'string' ? parseFloat(price) : price
+  const itemId = menuItemId || id
+
+  const handleAddToCart = () => {
+    if (onAddToCart) {
+      onAddToCart(itemId)
+    } else {
+      // Default: add to cart using cart store
+      addItem({
+        menuItemId: itemId,
+        name,
+        description: description || undefined,
+        image: image || undefined,
+        price: priceNum,
+        modifiers: [], // Will be enhanced with modifier selector later
+      })
+      openCart()
+    }
+  }
   const priceFormatted =
     typeof price === 'string' ? price : `$${Number(price).toFixed(2)}`
 
@@ -78,9 +104,9 @@ export function MenuItemCard({
             Contains: {allergens.join(', ')}
           </p>
         )}
-        {showAddButton && onAddToCart && (
+        {showAddButton && (
           <button
-            onClick={() => onAddToCart(id)}
+            onClick={handleAddToCart}
             className="w-full bg-indigo-600 text-white py-2 px-4 rounded-md hover:bg-indigo-700 transition-colors"
           >
             Add to Cart
