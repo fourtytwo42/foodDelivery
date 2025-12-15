@@ -1,3 +1,107 @@
+import { act } from '@testing-library/react'
+import { useCartStore } from '@/stores/cart-store'
+
+describe('cart-store', () => {
+  beforeEach(() => {
+    localStorage.clear()
+    const { clearCart, closeCart } = useCartStore.getState()
+    act(() => {
+      clearCart()
+      closeCart()
+      useCartStore.setState({ items: [], isOpen: false })
+    })
+  })
+
+  const baseItem = {
+    menuItemId: 'm1',
+    name: 'Burger',
+    price: 10,
+    modifiers: [],
+  }
+
+  it('adds a new item and increments existing with same modifiers', () => {
+    act(() => {
+      useCartStore.getState().addItem(baseItem)
+      useCartStore.getState().addItem({ ...baseItem, quantity: 2 })
+    })
+
+    const items = useCartStore.getState().items
+    expect(items).toHaveLength(1)
+    expect(items[0].quantity).toBe(3)
+  })
+
+  it('adds separate item when modifiers differ', () => {
+    act(() => {
+      useCartStore.getState().addItem({
+        ...baseItem,
+        modifiers: [{ modifierId: 'a', modifierName: 'Size', optionId: '1', optionName: 'Large', price: 1 }],
+      })
+      useCartStore.getState().addItem({
+        ...baseItem,
+        modifiers: [{ modifierId: 'b', modifierName: 'Spice', optionId: '2', optionName: 'Mild', price: 0 }],
+      })
+    })
+
+    expect(useCartStore.getState().items).toHaveLength(2)
+  })
+
+  it('updates quantity and removes when quantity <= 0', () => {
+    act(() => {
+      useCartStore.getState().addItem(baseItem)
+      const id = useCartStore.getState().items[0].id
+      useCartStore.getState().updateItemQuantity(id, 5)
+      useCartStore.getState().updateItemQuantity(id, 0)
+    })
+
+    expect(useCartStore.getState().items).toHaveLength(0)
+  })
+
+  it('updates modifiers and special instructions', () => {
+    act(() => {
+      useCartStore.getState().addItem(baseItem)
+      const id = useCartStore.getState().items[0].id
+      useCartStore.getState().updateItemModifiers(id, [
+        { modifierId: 'a', modifierName: 'Extra', optionId: '1', optionName: 'Cheese', price: 1.5 },
+      ])
+      useCartStore.getState().updateItemSpecialInstructions(id, 'No onions')
+    })
+
+    const item = useCartStore.getState().items[0]
+    expect(item.modifiers[0].optionName).toBe('Cheese')
+    expect(item.specialInstructions).toBe('No onions')
+  })
+
+  it('computes subtotal and totals with tax/fees', () => {
+    act(() => {
+      useCartStore.getState().addItem({
+        ...baseItem,
+        price: 5,
+        quantity: 2,
+        modifiers: [{ modifierId: 'a', modifierName: 'Cheese', optionId: '1', optionName: 'Extra', price: 1 }],
+      })
+    })
+
+    const subtotal = useCartStore.getState().getSubtotal()
+    expect(subtotal).toBe(12) // 5*2 + (1*2)
+
+    const total = useCartStore.getState().getTotalWithTaxAndFees(0.1, 3, 2, 1)
+    expect(total).toBeCloseTo(12 + 1.2 + 3 + 2 - 1)
+  })
+
+  it('toggles cart open/close', () => {
+    act(() => {
+      useCartStore.getState().openCart()
+      useCartStore.getState().toggleCart()
+    })
+    expect(useCartStore.getState().isOpen).toBe(false)
+
+    act(() => {
+      useCartStore.getState().toggleCart()
+    })
+    expect(useCartStore.getState().isOpen).toBe(true)
+  })
+})
+
 import { useCartStore, CartItem } from '@/stores/cart-store'
 import { act, renderHook } from '@testing-library/react'
 
@@ -378,6 +482,9 @@ describe('Cart Store', () => {
     it('should open and close cart', () => {
       const { result } = renderHook(() => useCartStore())
 
+      act(() => {
+        result.current.closeCart()
+      })
       expect(result.current.isOpen).toBe(false)
 
       act(() => {

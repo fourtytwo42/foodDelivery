@@ -479,6 +479,99 @@ async function main() {
     },
   })
 
+  // ============================================
+  // GIFT CARDS (Stage 7)
+  // ============================================
+  console.log('Creating gift cards...')
+  const { giftCardService } = await import('../services/gift-card-service')
+
+  const demoGiftCard1 = await giftCardService.createGiftCard({
+    code: 'DEMO-GC-100',
+    originalBalance: 50.0,
+    purchasedBy: customerUser.id,
+  })
+
+  const demoGiftCard2 = await giftCardService.createGiftCard({
+    code: 'DEMO-GC-25',
+    originalBalance: 25.0,
+  })
+
+  console.log(`✅ Created gift card: ${demoGiftCard1.code}`)
+  console.log(`✅ Created gift card: ${demoGiftCard2.code}`)
+
+  // ============================================
+  // COUPONS (Stage 7)
+  // ============================================
+  console.log('Creating coupons...')
+  const { couponService } = await import('../services/coupon-service')
+
+  const tenPercentOff = await couponService.createCoupon({
+    code: 'SAVE10',
+    name: '10% Off',
+    description: 'Get 10% off your order',
+    type: 'PERCENTAGE',
+    discountValue: 10,
+    minOrderAmount: 20.0,
+    maxDiscountAmount: 10.0,
+    validFrom: new Date(),
+    validUntil: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000), // 1 year from now
+    createdBy: adminUser.id,
+  })
+
+  const fiveDollarsOff = await couponService.createCoupon({
+    code: 'SAVE5',
+    name: '$5 Off',
+    description: 'Get $5 off orders over $25',
+    type: 'FIXED',
+    discountValue: 5.0,
+    minOrderAmount: 25.0,
+    validFrom: new Date(),
+    validUntil: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000),
+    createdBy: adminUser.id,
+  })
+
+  const freeShipping = await couponService.createCoupon({
+    code: 'FREESHIP',
+    name: 'Free Shipping',
+    description: 'Free delivery on your order',
+    type: 'FREE_SHIPPING',
+    minOrderAmount: 30.0,
+    validFrom: new Date(),
+    validUntil: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000),
+    createdBy: adminUser.id,
+  })
+
+  console.log(`✅ Created coupon: ${tenPercentOff.code}`)
+  console.log(`✅ Created coupon: ${fiveDollarsOff.code}`)
+  console.log(`✅ Created coupon: ${freeShipping.code}`)
+
+  // ============================================
+  // LOYALTY SETUP (Stage 7)
+  // ============================================
+  console.log('Setting up loyalty accounts...')
+  const { loyaltyService } = await import('../services/loyalty-service')
+
+  // Enable loyalty points in settings
+  await prisma.restaurantSettings.update({
+    where: { id: 'default' },
+    data: {
+      enableLoyaltyPoints: true,
+      loyaltyPointsPerDollar: 0.5, // 0.5 points per dollar
+      loyaltyPointsForFree: 100, // 100 points = $1
+    },
+  })
+
+  // Create loyalty account for demo customer with some points
+  const loyaltyAccount = await loyaltyService.getOrCreateAccount(customerUser.id)
+  await loyaltyService.adjustPoints(
+    customerUser.id,
+    250, // Give 250 points
+    'ADJUSTED',
+    'Demo account bonus points'
+  )
+
+  console.log(`✅ Created loyalty account for ${customerUser.email} with 250 points`)
+
   console.log('✅ Database seed complete!')
   console.log('\nDemo Accounts:')
   console.log('  Admin: admin@demo.com / demo123')
@@ -490,6 +583,10 @@ async function main() {
   console.log('  - 4 Categories (Appetizers, Entrees, Desserts, Drinks)')
   console.log('  - 10 Menu Items with modifiers')
   console.log('  - 3 Modifiers (Size, Toppings, Sauce)')
+  console.log('\nPromotions:')
+  console.log('  - Gift Cards: DEMO-GC-100 ($50), DEMO-GC-25 ($25)')
+  console.log('  - Coupons: SAVE10 (10% off), SAVE5 ($5 off), FREESHIP (Free shipping)')
+  console.log('  - Loyalty: Customer account has 250 points')
 }
 
 main()

@@ -36,6 +36,10 @@ model User {
   createdOrders Order[]    @relation("OrderCreator")
   paymentMethods SavedPaymentMethod[] @relation("UserPaymentMethods")
   deliveries    Delivery[] @relation("DriverDeliveries")
+  purchasedGiftCards GiftCard[] @relation("GiftCardPurchaser")
+  createdCoupons Coupon[] @relation("CouponCreator")
+  couponUsages  CouponUsage[] @relation("CouponUsageUser")
+  loyaltyAccount LoyaltyAccount?
   
   @@index([email])
   @@index([createdAt])
@@ -305,6 +309,9 @@ model Order {
   items               OrderItem[]
   payments            Payment[]
   delivery            Delivery?
+  couponUsages        CouponUsage[]
+  giftCardTransactions GiftCardTransaction[]
+  loyaltyTransactions  LoyaltyTransaction[]
   
   @@index([userId])
   @@index([orderNumber])
@@ -452,6 +459,135 @@ model Delivery {
   @@index([driverId])
   @@index([status])
   @@index([estimatedDeliveryTime])
+}
+
+// ============================================
+// GIFT CARDS (Stage 7)
+// ============================================
+
+model GiftCard {
+  id                  String   @id @default(cuid())
+  code                String   @unique
+  pin                 String?  // Optional PIN for additional security
+  originalBalance     Decimal  @db.Decimal(10, 2)
+  currentBalance      Decimal  @db.Decimal(10, 2)
+  currency            String   @default("USD")
+  status              String   @default("ACTIVE") // "ACTIVE" | "USED" | "EXPIRED" | "CANCELLED"
+  purchasedBy         String?  // User ID who purchased
+  purchasedAt         DateTime?
+  expiresAt           DateTime?
+  lastUsedAt          DateTime?
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+  
+  purchaser           User?    @relation("GiftCardPurchaser", fields: [purchasedBy], references: [id])
+  transactions        GiftCardTransaction[]
+  
+  @@index([code])
+  @@index([status])
+  @@index([purchasedBy])
+}
+
+model GiftCardTransaction {
+  id                  String   @id @default(cuid())
+  giftCardId          String
+  orderId             String?
+  amount              Decimal  @db.Decimal(10, 2) // Positive for usage, negative for refund
+  type                String   // "PURCHASE" | "USAGE" | "REFUND" | "EXPIRATION"
+  description         String?  @db.Text
+  createdAt           DateTime @default(now())
+  
+  giftCard            GiftCard @relation(fields: [giftCardId], references: [id], onDelete: Cascade)
+  order               Order?   @relation(fields: [orderId], references: [id], onDelete: SetNull)
+  
+  @@index([giftCardId])
+  @@index([orderId])
+}
+
+// ============================================
+// COUPONS (Stage 7)
+// ============================================
+
+model Coupon {
+  id                  String   @id @default(cuid())
+  code                String   @unique
+  name                String
+  description         String?  @db.Text
+  type                String   // "PERCENTAGE" | "FIXED" | "BUY_X_GET_Y" | "FREE_SHIPPING"
+  discountValue       Decimal? @db.Decimal(10, 2) // Percentage or fixed amount
+  minOrderAmount      Decimal? @db.Decimal(10, 2)
+  maxDiscountAmount   Decimal? @db.Decimal(10, 2)
+  buyXGetY            Json?    // { buyQuantity: 2, getQuantity: 1, getItemId: "item123" }
+  status              String   @default("ACTIVE") // "ACTIVE" | "INACTIVE" | "EXPIRED"
+  usageLimit          Int?     // Total usage limit
+  usageCount          Int      @default(0)
+  usageLimitPerUser   Int?     // Usage limit per user
+  validFrom           DateTime
+  validUntil          DateTime
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+  createdBy           String?
+  
+  creator             User?    @relation("CouponCreator", fields: [createdBy], references: [id])
+  usages              CouponUsage[]
+  
+  @@index([code])
+  @@index([status])
+  @@index([validFrom])
+  @@index([validUntil])
+}
+
+model CouponUsage {
+  id                  String   @id @default(cuid())
+  couponId            String
+  orderId             String
+  userId              String?
+  discountAmount      Decimal  @db.Decimal(10, 2)
+  usedAt              DateTime @default(now())
+  
+  coupon              Coupon   @relation(fields: [couponId], references: [id], onDelete: Cascade)
+  order               Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  user                User?    @relation("CouponUsageUser", fields: [userId], references: [id], onDelete: SetNull)
+  
+  @@index([couponId])
+  @@index([orderId])
+  @@index([userId])
+}
+
+// ============================================
+// LOYALTY POINTS (Stage 7)
+// ============================================
+
+model LoyaltyAccount {
+  id                  String   @id @default(cuid())
+  userId              String   @unique
+  points              Int      @default(0)
+  lifetimePoints      Int      @default(0) // Total points ever earned
+  tier                String   @default("BRONZE") // "BRONZE" | "SILVER" | "GOLD" | "PLATINUM"
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+  
+  user                User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  transactions        LoyaltyTransaction[]
+  
+  @@index([userId])
+  @@index([points])
+}
+
+model LoyaltyTransaction {
+  id                  String   @id @default(cuid())
+  loyaltyAccountId    String
+  orderId             String?
+  points              Int      // Positive for earning, negative for redemption
+  type                String   // "EARNED" | "REDEEMED" | "EXPIRED" | "ADJUSTED"
+  description         String?  @db.Text
+  createdAt           DateTime @default(now())
+  
+  loyaltyAccount      LoyaltyAccount @relation(fields: [loyaltyAccountId], references: [id], onDelete: Cascade)
+  order               Order?         @relation(fields: [orderId], references: [id], onDelete: SetNull)
+  
+  @@index([loyaltyAccountId])
+  @@index([orderId])
 }
 
 // ============================================
