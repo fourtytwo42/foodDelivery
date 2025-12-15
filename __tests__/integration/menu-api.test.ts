@@ -174,6 +174,21 @@ describe('Menu API Routes', () => {
       expect(response.status).toBe(500)
       expect(data.error).toBe('Failed to update category')
     })
+
+    it('should handle validation errors when updating category', async () => {
+      const request = createMockRequest(
+        'http://localhost:3000/api/admin/menu/categories/cat1',
+        { name: '' }, // Invalid: empty name
+        'PUT'
+      )
+      const response = await updateCategory(request, {
+        params: Promise.resolve({ id: 'cat1' }),
+      })
+      const data = await response.json()
+
+      expect(response.status).toBe(400)
+      expect(data.error).toBe('Validation error')
+    })
   })
 
   describe('DELETE /api/admin/menu/categories/[id]', () => {
@@ -321,6 +336,38 @@ describe('Menu API Routes', () => {
 
       expect(response.status).toBe(500)
       expect(data.error).toBe('Failed to fetch menu item')
+    })
+  })
+
+  describe('PUT /api/admin/menu/items/[id]', () => {
+    it('should handle errors when updating item', async () => {
+      ;(menuService.updateMenuItem as jest.Mock).mockRejectedValue(
+        new Error('Database error')
+      )
+
+      const request = createMockRequest(
+        'http://localhost:3000/api/admin/menu/items/item1',
+        { name: 'Updated Item' },
+        'PUT'
+      )
+      const response = await updateItem(request, { params: { id: 'item1' } })
+      const data = await response.json()
+
+      expect(response.status).toBe(500)
+      expect(data.error).toBe('Failed to update menu item')
+    })
+
+    it('should handle validation errors when updating item', async () => {
+      const request = createMockRequest(
+        'http://localhost:3000/api/admin/menu/items/item1',
+        { name: '' }, // Invalid: empty name
+        'PUT'
+      )
+      const response = await updateItem(request, { params: { id: 'item1' } })
+      const data = await response.json()
+
+      expect(response.status).toBe(400)
+      expect(data.error).toBe('Validation error')
     })
   })
 
