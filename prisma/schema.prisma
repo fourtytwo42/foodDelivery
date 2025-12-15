@@ -1,0 +1,129 @@
+// prisma/schema.prisma
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================
+// USER & AUTHENTICATION (Stage 1)
+// ============================================
+
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  passwordHash  String
+  firstName     String?
+  lastName      String?
+  phone         String?
+  avatar        String?
+  emailVerified Boolean   @default(false)
+  emailVerificationToken String? @unique
+  passwordResetToken String? @unique
+  passwordResetExpires DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  deletedAt     DateTime?
+  lastLoginAt   DateTime?
+  
+  roles         UserRole[]
+  
+  @@index([email])
+  @@index([createdAt])
+  @@index([deletedAt])
+}
+
+model Role {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  description String?
+  permissions String[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  users       UserRole[]
+  
+  @@index([name])
+}
+
+model UserRole {
+  id        String   @id @default(cuid())
+  userId    String
+  roleId    String
+  createdAt DateTime @default(now())
+  
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role      Role     @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  
+  @@unique([userId, roleId])
+  @@index([userId])
+  @@index([roleId])
+}
+
+// ============================================
+// RESTAURANT SETTINGS (Stage 1)
+// ============================================
+
+model RestaurantSettings {
+  id                    String   @id @default("default")
+  
+  name                  String
+  description           String?  @db.Text
+  phone                 String?
+  email                 String?
+  website               String?
+  logo                  String?
+  banner                String?
+  
+  address               String
+  city                  String
+  state                 String
+  zipCode               String
+  country               String   @default("US")
+  latitude              Float?
+  longitude             Float?
+  
+  hoursMonday           Json?
+  hoursTuesday          Json?
+  hoursWednesday        Json?
+  hoursThursday         Json?
+  hoursFriday           Json?
+  hoursSaturday         Json?
+  hoursSunday           Json?
+  specialHours          Json?
+  
+  minOrderAmount        Decimal? @db.Decimal(10, 2)
+  maxDeliveryDistance   Float?
+  defaultPrepTime       Int?
+  autoAcceptOrders      Boolean  @default(false)
+  taxRate               Decimal  @default(0.0) @db.Decimal(5, 4)
+  
+  enableLoyaltyPoints   Boolean  @default(false)
+  loyaltyPointsPerDollar Decimal? @default(0.5) @db.Decimal(5, 2)
+  loyaltyPointsForFree  Int?     @default(100)
+  enableEmailNotifications Boolean @default(true)
+  enableSMSNotifications  Boolean @default(false)
+  enableEmailVerification  Boolean @default(false)
+  enableReCAPTCHA       Boolean @default(false)
+  reCAPTCHASiteKey      String?
+  reCAPTCHASecretKey    String?
+  
+  demoMode              Boolean  @default(true)
+  setupWizardEnabled    Boolean  @default(false)
+  
+  primaryColor          String?  @default("#FF6B35")
+  secondaryColor        String?  @default("#004E89")
+  menuDisplayStyle      String   @default("grid")
+  
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+  createdBy             String?
+  updatedBy             String?
+  
+  @@index([zipCode])
+}
+
