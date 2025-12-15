@@ -44,7 +44,12 @@ export const loyaltyService = {
           tier: 'BRONZE',
         },
         include: {
-          transactions: [],
+          transactions: {
+            orderBy: {
+              createdAt: 'desc',
+            },
+            take: 10,
+          },
         },
       })
     }

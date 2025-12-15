@@ -16,8 +16,8 @@ interface Delivery {
     orderNumber: string
     customerName?: string
     customerPhone?: string
-    total: number
-    items: any[]
+    total: number | string
+    items?: any[]
   }
 }
 

@@ -18,7 +18,7 @@ interface Delivery {
     customerName?: string
     customerPhone?: string
     total: number | string
-    items: Array<{
+    items?: Array<{
       name: string
       quantity: number
       price: number | string
@@ -169,7 +169,7 @@ export function DeliveryDetails({
       <div className="bg-white rounded-lg shadow-md p-4">
         <h3 className="font-semibold text-gray-900 mb-3">Items</h3>
         <div className="space-y-2">
-          {delivery.order.items.map((item, index) => (
+          {delivery.order.items?.map((item, index) => (
             <div key={index} className="flex justify-between text-sm">
               <span>
                 {item.quantity}x {item.name}

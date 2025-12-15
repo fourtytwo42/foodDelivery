@@ -1,5 +1,6 @@
 import { prisma } from '@/lib/prisma'
 import { Decimal } from '@prisma/client/runtime/library'
+import { Prisma } from '@prisma/client'
 import { CartItem } from '@/stores/cart-store'
 
 export interface CreateOrderInput {
@@ -8,7 +9,7 @@ export interface CreateOrderInput {
   customerPhone?: string
   customerName?: string
   type: 'DELIVERY' | 'PICKUP'
-  items: CartItem[]
+  items: Omit<CartItem, 'id' | 'image'>[]
   subtotal: number
   tax: number
   deliveryFee: number
@@ -67,7 +68,7 @@ export const orderService = {
         discount: new Decimal(data.discount),
         total: new Decimal(data.total),
         deliveryAddressId: data.deliveryAddressId || null,
-        deliveryAddress: data.deliveryAddress || null,
+        deliveryAddress: data.deliveryAddress || Prisma.JsonNull,
         specialInstructions: data.specialInstructions,
         deliveryInstructions: data.deliveryInstructions,
         createdBy: data.createdBy || null,

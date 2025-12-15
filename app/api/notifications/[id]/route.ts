@@ -7,7 +7,7 @@ import {
 
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const authHeader = request.headers.get('authorization')
@@ -19,7 +19,8 @@ export async function PATCH(
     const payload = verifyToken(token)
     const userId = payload.userId
 
-    const notification = await markNotificationAsRead(params.id, userId)
+    const { id } = await params
+    const notification = await markNotificationAsRead(id, userId)
 
     return NextResponse.json({
       success: true,
@@ -36,7 +37,7 @@ export async function PATCH(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const authHeader = request.headers.get('authorization')
@@ -48,7 +49,8 @@ export async function DELETE(
     const payload = verifyToken(token)
     const userId = payload.userId
 
-    await deleteNotification(params.id, userId)
+    const { id } = await params
+    await deleteNotification(id, userId)
 
     return NextResponse.json({
       success: true,

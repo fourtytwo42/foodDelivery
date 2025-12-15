@@ -1,5 +1,5 @@
 import { verifyToken } from './auth'
-import WebSocket from 'ws'
+import WebSocket, { WebSocketServer } from 'ws'
 
 export interface WebSocketClient {
   ws: WebSocket
@@ -9,7 +9,7 @@ export interface WebSocketClient {
 
 export class WebSocketManager {
   private clients: Map<string, WebSocketClient> = new Map()
-  private wss: WebSocket.Server | null = null
+  private wss: WebSocketServer | null = null
 
   constructor() {
     // Initialize on demand
@@ -23,7 +23,7 @@ export class WebSocketManager {
       return
     }
 
-    this.wss = new WebSocket.Server({ noServer: true })
+    this.wss = new WebSocketServer({ noServer: true })
 
     server.on('upgrade', (request: any, socket: any, head: any) => {
       // Extract token from query string

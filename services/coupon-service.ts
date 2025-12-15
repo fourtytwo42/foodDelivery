@@ -1,5 +1,6 @@
 import { prisma } from '@/lib/prisma'
 import { Decimal } from '@prisma/client/runtime/library'
+import { Prisma } from '@prisma/client'
 
 export interface CreateCouponInput {
   code: string
@@ -68,7 +69,7 @@ export const couponService = {
         maxDiscountAmount: data.maxDiscountAmount
           ? new Decimal(data.maxDiscountAmount)
           : null,
-        buyXGetY: data.buyXGetY || null,
+        buyXGetY: data.buyXGetY || Prisma.JsonNull,
         usageLimit: data.usageLimit || null,
         usageLimitPerUser: data.usageLimitPerUser || null,
         validFrom: data.validFrom,

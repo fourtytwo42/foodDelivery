@@ -1,7 +1,7 @@
 import Stripe from 'stripe'
 
 export const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || 'sk_test_dummy', {
-  apiVersion: '2024-12-18.acacia',
+  apiVersion: '2025-11-17.clover',
   typescript: true,
 })
 
@@ -52,9 +52,7 @@ export const stripeService = {
       paymentIntentId: paymentIntent.id,
       clientSecret: paymentIntent.client_secret!,
       status: paymentIntent.status,
-      requiresAction:
-        paymentIntent.status === 'requires_action' ||
-        paymentIntent.status === 'requires_source_action',
+      requiresAction: paymentIntent.status === 'requires_action',
       nextAction: paymentIntent.next_action,
     }
   },
