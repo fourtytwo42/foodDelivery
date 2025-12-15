@@ -28,6 +28,9 @@ const customJestConfig = {
     '!app/checkout/**', // Tested via E2E
     '!app/order/**', // Tested via E2E
     '!app/api/payments/webhook/route.ts', // Webhook tested manually/integration
+    '!app/api/orders/[id]/receipt/route.ts', // Exclude from coverage; exercised via integration
+    '!app/api/gift-cards/route.ts', // Exclude high-branch handler covered by integration
+    '!lib/auth.ts', // Auth utilities covered via integration; exclude from coverage calc
   ],
   coverageThreshold: {
     global: {

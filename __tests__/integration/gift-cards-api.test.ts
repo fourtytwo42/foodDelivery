@@ -217,6 +217,28 @@ describe('Gift Cards API Routes', () => {
       expect(response.status).toBe(404)
       expect(data.error).toBe('Gift card not found')
     })
+
+    it('should handle service errors on validation', async () => {
+      ;(giftCardService.validateGiftCard as jest.Mock).mockRejectedValue(new Error('db down'))
+
+      const request = createMockRequest('http://localhost:3000/api/gift-cards?code=TEST')
+      const response = await getGiftCard(request)
+      const data = await response.json()
+
+      expect(response.status).toBe(500)
+      expect(data.error).toBe('Failed to fetch gift card')
+    })
+
+    it('should handle service errors on balance check', async () => {
+      ;(giftCardService.checkBalance as jest.Mock).mockRejectedValue(new Error('db down'))
+
+      const request = createMockRequest('http://localhost:3000/api/gift-cards?balance=TEST')
+      const response = await getGiftCard(request)
+      const data = await response.json()
+
+      expect(response.status).toBe(500)
+      expect(data.error).toBe('Failed to fetch gift card')
+    })
   })
 
   describe('POST /api/gift-cards/use', () => {

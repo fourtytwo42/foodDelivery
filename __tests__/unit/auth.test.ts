@@ -8,6 +8,7 @@ import {
   userHasRole,
   userHasAnyRole,
   getUserRoles,
+  getUserWithRoles,
 } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 
@@ -79,12 +80,37 @@ describe('auth utilities', () => {
     await expect(getUserRoles('u1')).resolves.toEqual(['ADMIN', 'STAFF'])
   })
 
+  it('handles user with no roles', async () => {
+    ;(prisma.user.findUnique as jest.Mock).mockResolvedValue({
+      id: 'u1',
+      roles: [],
+    })
+
+    await expect(userHasAnyRole('u1', ['ADMIN'])).resolves.toBe(false)
+  })
+
   it('handles missing user in role checks', async () => {
     ;(prisma.user.findUnique as jest.Mock).mockResolvedValue(null)
 
     await expect(userHasRole('u1', 'ADMIN')).resolves.toBe(false)
     await expect(userHasAnyRole('u1', ['ADMIN'])).resolves.toBe(false)
     await expect(getUserRoles('u1')).resolves.toEqual([])
+  })
+
+  it('gets user with roles', async () => {
+    ;(prisma.user.findUnique as jest.Mock).mockResolvedValue({ id: 'u1' })
+    const user = await getUserWithRoles('u1')
+    expect(prisma.user.findUnique).toHaveBeenCalledWith({
+      where: { id: 'u1' },
+      include: {
+        roles: {
+          include: {
+            role: true,
+          },
+        },
+      },
+    })
+    expect(user).toEqual({ id: 'u1' })
   })
 })
 

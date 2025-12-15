@@ -79,6 +79,35 @@ describe('Receipt API Route', () => {
     expect(response.status).toBe(500)
     expect(data.error).toBe('Failed to generate receipt')
   })
+
+  it('should handle render errors', async () => {
+    ;(orderService.getOrderById as jest.Mock).mockResolvedValue({
+      id: 'order1',
+      orderNumber: 'ORD-1001',
+      placedAt: new Date().toISOString(),
+      customerName: 'John Doe',
+      type: 'DELIVERY',
+      items: [],
+      subtotal: 0,
+      tax: 0,
+      deliveryFee: 0,
+      tip: 0,
+      discount: 0,
+      total: 0,
+      paymentMethod: 'CASH',
+      paymentStatus: 'PAID',
+    })
+    ;(generateReceiptHTML as jest.Mock).mockImplementation(() => {
+      throw new Error('render fail')
+    })
+
+    const request = createMockRequest('http://localhost:3000/api/orders/order1/receipt')
+    const response = await getReceipt(request, { params: Promise.resolve({ id: 'order1' }) })
+    const data = await response.json()
+
+    expect(response.status).toBe(500)
+    expect(data.error).toBe('Failed to generate receipt')
+  })
 })
 
 
