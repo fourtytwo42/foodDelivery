@@ -113,7 +113,7 @@ describe('orderService', () => {
   })
 
   describe('getOrders', () => {
-    it('should fetch orders with filters', async () => {
+    it('should fetch orders with userId filter', async () => {
       const mockOrders = [
         {
           id: 'order1',
@@ -128,6 +128,126 @@ describe('orderService', () => {
 
       expect(prisma.order.findMany).toHaveBeenCalledWith({
         where: { userId: 'user1' },
+        include: expect.any(Object),
+        orderBy: { placedAt: 'desc' },
+        take: 100,
+      })
+      expect(result).toEqual(mockOrders)
+    })
+
+    it('should fetch orders with status filter', async () => {
+      const mockOrders = [
+        {
+          id: 'order1',
+          orderNumber: 'ORD-123',
+          status: 'PENDING',
+        },
+      ]
+
+      ;(prisma.order.findMany as jest.Mock).mockResolvedValue(mockOrders)
+
+      const result = await orderService.getOrders({ status: 'PENDING' })
+
+      expect(prisma.order.findMany).toHaveBeenCalledWith({
+        where: { status: 'PENDING' },
+        include: expect.any(Object),
+        orderBy: { placedAt: 'desc' },
+        take: 100,
+      })
+      expect(result).toEqual(mockOrders)
+    })
+
+    it('should fetch orders with type filter', async () => {
+      const mockOrders = [
+        {
+          id: 'order1',
+          orderNumber: 'ORD-123',
+          type: 'DELIVERY',
+        },
+      ]
+
+      ;(prisma.order.findMany as jest.Mock).mockResolvedValue(mockOrders)
+
+      const result = await orderService.getOrders({ type: 'DELIVERY' })
+
+      expect(prisma.order.findMany).toHaveBeenCalledWith({
+        where: { type: 'DELIVERY' },
+        include: expect.any(Object),
+        orderBy: { placedAt: 'desc' },
+        take: 100,
+      })
+      expect(result).toEqual(mockOrders)
+    })
+
+    it('should fetch orders with orderNumber filter', async () => {
+      const mockOrders = [
+        {
+          id: 'order1',
+          orderNumber: 'ORD-123',
+        },
+      ]
+
+      ;(prisma.order.findMany as jest.Mock).mockResolvedValue(mockOrders)
+
+      const result = await orderService.getOrders({ orderNumber: 'ORD-123' })
+
+      expect(prisma.order.findMany).toHaveBeenCalledWith({
+        where: { orderNumber: 'ORD-123' },
+        include: expect.any(Object),
+        orderBy: { placedAt: 'desc' },
+        take: 100,
+      })
+      expect(result).toEqual(mockOrders)
+    })
+
+    it('should fetch orders with multiple filters', async () => {
+      const mockOrders = [
+        {
+          id: 'order1',
+          orderNumber: 'ORD-123',
+          userId: 'user1',
+          status: 'PENDING',
+          type: 'DELIVERY',
+        },
+      ]
+
+      ;(prisma.order.findMany as jest.Mock).mockResolvedValue(mockOrders)
+
+      const result = await orderService.getOrders({
+        userId: 'user1',
+        status: 'PENDING',
+        type: 'DELIVERY',
+        orderNumber: 'ORD-123',
+      })
+
+      expect(prisma.order.findMany).toHaveBeenCalledWith({
+        where: {
+          userId: 'user1',
+          status: 'PENDING',
+          type: 'DELIVERY',
+          orderNumber: 'ORD-123',
+        },
+        include: expect.any(Object),
+        orderBy: { placedAt: 'desc' },
+        take: 100,
+      })
+      expect(result).toEqual(mockOrders)
+    })
+
+    it('should fetch orders without filters', async () => {
+      const mockOrders = [
+        {
+          id: 'order1',
+          orderNumber: 'ORD-123',
+        },
+      ]
+
+      ;(prisma.order.findMany as jest.Mock).mockResolvedValue(mockOrders)
+
+      const result = await orderService.getOrders()
+
+      expect(prisma.order.findMany).toHaveBeenCalledWith({
+        where: {},
         include: expect.any(Object),
         orderBy: { placedAt: 'desc' },
         take: 100,

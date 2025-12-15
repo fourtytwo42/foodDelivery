@@ -27,18 +27,33 @@ describe('Order Calculations', () => {
   })
 
   describe('calculateDeliveryFee', () => {
-    it('should return default delivery fee when order meets minimum', () => {
-      const fee = calculateDeliveryFee(undefined, 10, 15)
-      expect(fee).toBe(3.99)
-    })
-
-    it('should return 0 when order is below minimum', () => {
-      const fee = calculateDeliveryFee(undefined, 10, 5)
+    it('should return 0 when order subtotal is below minimum', () => {
+      const fee = calculateDeliveryFee(undefined, 50, 30) // minOrderAmount=50, orderSubtotal=30
       expect(fee).toBe(0)
     })
 
-    it('should return default fee when no parameters provided', () => {
+    it('should return default fee when order subtotal meets minimum', () => {
+      const fee = calculateDeliveryFee(undefined, 50, 50) // minOrderAmount=50, orderSubtotal=50
+      expect(fee).toBe(3.99)
+    })
+
+    it('should return default fee when minOrderAmount is undefined', () => {
+      const fee = calculateDeliveryFee(undefined, undefined, 30)
+      expect(fee).toBe(3.99)
+    })
+
+    it('should return default fee when orderSubtotal is undefined', () => {
+      const fee = calculateDeliveryFee(undefined, 50, undefined)
+      expect(fee).toBe(3.99)
+    })
+
+    it('should return default fee when all parameters are undefined', () => {
       const fee = calculateDeliveryFee()
+      expect(fee).toBe(3.99)
+    })
+
+    it('should return default fee when order subtotal exceeds minimum', () => {
+      const fee = calculateDeliveryFee(undefined, 50, 60) // minOrderAmount=50, orderSubtotal=60
       expect(fee).toBe(3.99)
     })
   })
@@ -95,7 +110,7 @@ describe('Order Calculations', () => {
   })
 
   describe('getOrderCalculations', () => {
-    it('should return all calculations correctly', () => {
+    it('should return all calculations correctly for DELIVERY', () => {
       const subtotal = 100
       const taxRate = 0.0825
       const deliveryFee = 3.99
@@ -107,7 +122,8 @@ describe('Order Calculations', () => {
         taxRate,
         deliveryFee,
         tip,
-        discount
+        discount,
+        'DELIVERY'
       )
 
       expect(calculations.subtotal).toBe(100)
@@ -116,6 +132,34 @@ describe('Order Calculations', () => {
       expect(calculations.tip).toBe(5)
       expect(calculations.discount).toBe(10)
       expect(calculations.total).toBeCloseTo(107.24, 2)
+    })
+
+    it('should return 0 delivery fee for PICKUP orders', () => {
+      const calculations = getOrderCalculations(
+        100,
+        0.0825,
+        3.99,
+        5,
+        0,
+        'PICKUP'
+      )
+
+      expect(calculations.deliveryFee).toBe(0)
+      expect(calculations.total).toBeCloseTo(113.25, 2) // 100 + 8.25 + 5
+    })
+
+    it('should apply discount correctly', () => {
+      const calculations = getOrderCalculations(
+        100,
+        0.0825,
+        3.99,
+        5,
+        10,
+        'DELIVERY'
+      )
+
+      expect(calculations.discount).toBe(10)
+      expect(calculations.total).toBeCloseTo(107.24, 2) // 100 + 8.25 + 3.99 + 5 - 10
     })
   })
 
@@ -134,6 +178,22 @@ describe('Order Calculations', () => {
         toString: () => '10.5',
       }
       expect(decimalToNumber(mockDecimal as any)).toBe(10.5)
+    })
+
+    it('should handle object with toNumber method', () => {
+      const mockDecimal = {
+        toNumber: () => 10.5,
+      }
+      expect(decimalToNumber(mockDecimal as any)).toBe(10.5)
+    })
+
+    it('should handle string numbers', () => {
+      expect(decimalToNumber('123.45')).toBe(123.45)
+    })
+
+    it('should handle negative numbers', () => {
+      expect(decimalToNumber(-10.5)).toBe(-10.5)
+      expect(decimalToNumber('-10.5')).toBe(-10.5)
     })
   })
 })

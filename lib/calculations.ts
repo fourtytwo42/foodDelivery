@@ -58,15 +58,17 @@ export function getOrderCalculations(
   taxRate: number,
   deliveryFee: number,
   tip: number,
-  discount: number
+  discount: number,
+  orderType: 'DELIVERY' | 'PICKUP'
 ): OrderCalculations {
   const tax = calculateTax(subtotal, taxRate)
-  const total = calculateOrderTotal(subtotal, taxRate, deliveryFee, tip, discount)
+  const finalDeliveryFee = orderType === 'PICKUP' ? 0 : deliveryFee
+  const total = calculateOrderTotal(subtotal, taxRate, finalDeliveryFee, tip, discount)
 
   return {
     subtotal,
     tax,
-    deliveryFee,
+    deliveryFee: finalDeliveryFee,
     tip,
     discount,
     total,

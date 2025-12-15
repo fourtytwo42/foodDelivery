@@ -89,7 +89,8 @@ export async function POST(request: NextRequest) {
       taxRate,
       deliveryFee,
       data.tip || 0,
-      data.discount || 0
+      data.discount || 0,
+      data.type
     )
 
     // Create order
