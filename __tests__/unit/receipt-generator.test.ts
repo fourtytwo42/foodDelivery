@@ -118,5 +118,45 @@ describe('Receipt Generator', () => {
       expect(html).toContain('$8.99')
     })
   })
+
+  describe('printReceipt', () => {
+    // Mock window.open and window.print
+    const mockPrintWindow = {
+      document: {
+        write: jest.fn(),
+        close: jest.fn(),
+      },
+      focus: jest.fn(),
+      print: jest.fn(),
+      close: jest.fn(),
+    }
+
+    beforeEach(() => {
+      jest.clearAllMocks()
+      global.window.open = jest.fn().mockReturnValue(mockPrintWindow as any)
+    })
+
+    it('should open print window and write HTML', () => {
+      const { printReceipt } = require('@/lib/receipt-generator')
+      
+      printReceipt(mockReceiptData)
+
+      expect(global.window.open).toHaveBeenCalledWith('', '_blank')
+      expect(mockPrintWindow.document.write).toHaveBeenCalled()
+      expect(mockPrintWindow.document.close).toHaveBeenCalled()
+      expect(mockPrintWindow.focus).toHaveBeenCalled()
+      expect(mockPrintWindow.print).toHaveBeenCalled()
+      expect(mockPrintWindow.close).toHaveBeenCalled()
+    })
+
+    it('should handle case when window.open returns null', () => {
+      global.window.open = jest.fn().mockReturnValue(null)
+      
+      const { printReceipt } = require('@/lib/receipt-generator')
+      
+      // Should not throw error
+      expect(() => printReceipt(mockReceiptData)).not.toThrow()
+    })
+  })
 })
 

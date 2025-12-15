@@ -466,6 +466,53 @@ describe('menuService', () => {
       })
       expect(result).toEqual(mockUpdated)
     })
+
+    it('should update category with all fields', async () => {
+      const categoryId = 'cat1'
+      const updateData = {
+        name: 'Updated Name',
+        description: 'Updated description',
+        image: 'new-image.jpg',
+        order: 5,
+        availableTimes: [{ start: '09:00', end: '21:00' }],
+      }
+      const mockUpdated = { id: categoryId, ...updateData }
+
+      ;(prisma.menuCategory.update as jest.Mock).mockResolvedValue(mockUpdated)
+
+      const result = await menuService.updateCategory(categoryId, updateData)
+
+      expect(prisma.menuCategory.update).toHaveBeenCalledWith({
+        where: { id: categoryId },
+        data: expect.objectContaining({
+          name: updateData.name,
+          description: updateData.description,
+          image: updateData.image,
+          order: updateData.order,
+          availableTimes: updateData.availableTimes,
+        }),
+      })
+      expect(result).toEqual(mockUpdated)
+    })
+
+    it('should handle undefined fields in update', async () => {
+      const categoryId = 'cat1'
+      const updateData = {
+        name: 'Updated Name',
+        description: undefined,
+        image: undefined,
+      }
+      const mockUpdated = { id: categoryId, name: updateData.name }
+
+      ;(prisma.menuCategory.update as jest.Mock).mockResolvedValue(mockUpdated)
+
+      const result = await menuService.updateCategory(categoryId, updateData)
+
+      const callArgs = (prisma.menuCategory.update as jest.Mock).mock.calls[0][0]
+      expect(callArgs.data.description).toBeUndefined()
+      expect(callArgs.data.image).toBeUndefined()
+      expect(result).toEqual(mockUpdated)
+    })
   })
 
   describe('updateMenuItem', () => {
@@ -484,6 +531,122 @@ describe('menuService', () => {
         include: expect.any(Object),
       })
       expect(result).toEqual(mockUpdated)
+    })
+
+    it('should update menu item with all fields', async () => {
+      const itemId = 'item1'
+      const updateData = {
+        name: 'Updated Pizza',
+        description: 'Updated description',
+        image: 'new-image.jpg',
+        price: 16.99,
+        categoryId: 'cat2',
+        featured: true,
+        popular: false,
+        availableTimes: [{ start: '11:00', end: '22:00' }],
+        dietaryTags: ['vegetarian'],
+        allergens: ['gluten'],
+        calories: 350,
+        preparationTime: 20,
+        spiceLevel: 2,
+      }
+      const mockUpdated = { id: itemId, ...updateData }
+
+      ;(prisma.menuItem.update as jest.Mock).mockResolvedValue(mockUpdated)
+
+      const result = await menuService.updateMenuItem(itemId, updateData)
+
+      const callArgs = (prisma.menuItem.update as jest.Mock).mock.calls[0][0]
+      expect(callArgs.data.name).toBe(updateData.name)
+      expect(callArgs.data.description).toBe(updateData.description)
+      expect(callArgs.data.categoryId).toBe(updateData.categoryId)
+      expect(callArgs.data.featured).toBe(updateData.featured)
+      expect(callArgs.data.popular).toBe(updateData.popular)
+      expect(result).toEqual(mockUpdated)
+    })
+
+    it('should handle undefined fields in update', async () => {
+      const itemId = 'item1'
+      const updateData = {
+        name: 'Updated Pizza',
+        description: undefined,
+        image: undefined,
+      }
+      const mockUpdated = { id: itemId, name: updateData.name }
+
+      ;(prisma.menuItem.update as jest.Mock).mockResolvedValue(mockUpdated)
+
+      const result = await menuService.updateMenuItem(itemId, updateData)
+
+      const callArgs = (prisma.menuItem.update as jest.Mock).mock.calls[0][0]
+      expect(callArgs.data.description).toBeUndefined()
+      expect(callArgs.data.image).toBeUndefined()
+      expect(result).toEqual(mockUpdated)
+    })
+  })
+
+  describe('updateModifier', () => {
+    it('should update modifier with all fields', async () => {
+      const modifierId = 'mod1'
+      const updateData = {
+        name: 'Updated Size',
+        description: 'Updated description',
+        type: 'MULTIPLE_CHOICE' as const,
+        required: false,
+        minSelections: 1,
+        maxSelections: 3,
+      }
+      const mockUpdated = { id: modifierId, ...updateData }
+
+      ;(prisma.modifier.update as jest.Mock).mockResolvedValue(mockUpdated)
+
+      const result = await menuService.updateModifier(modifierId, updateData)
+
+      const callArgs = (prisma.modifier.update as jest.Mock).mock.calls[0][0]
+      expect(callArgs.data.name).toBe(updateData.name)
+      expect(callArgs.data.type).toBe(updateData.type)
+      expect(callArgs.data.required).toBe(updateData.required)
+      expect(callArgs.data.minSelections).toBe(updateData.minSelections)
+      expect(callArgs.data.maxSelections).toBe(updateData.maxSelections)
+      expect(result).toEqual(mockUpdated)
+    })
+
+    it('should handle undefined fields in modifier update', async () => {
+      const modifierId = 'mod1'
+      const updateData = {
+        name: 'Updated Size',
+        description: undefined,
+      }
+      const mockUpdated = { id: modifierId, name: updateData.name }
+
+      ;(prisma.modifier.update as jest.Mock).mockResolvedValue(mockUpdated)
+
+      const result = await menuService.updateModifier(modifierId, updateData)
+
+      const callArgs = (prisma.modifier.update as jest.Mock).mock.calls[0][0]
+      expect(callArgs.data.description).toBeUndefined()
+      expect(result).toEqual(mockUpdated)
+    })
+  })
+
+  describe('getMenuItems', () => {
+    it('should filter menu items by popular flag', async () => {
+      const mockItems = [{ id: '1', name: 'Pizza', popular: true }]
+
+      ;(prisma.menuItem.findMany as jest.Mock).mockResolvedValue(mockItems)
+
+      const result = await menuService.getMenuItems({ popular: true })
+
+      expect(prisma.menuItem.findMany).toHaveBeenCalledWith({
+        where: {
+          active: true,
+          deletedAt: null,
+          popular: true,
+        },
+        include: expect.any(Object),
+        orderBy: { createdAt: 'desc' },
+      })
+      expect(result).toEqual(mockItems)
     })
   })
 })
