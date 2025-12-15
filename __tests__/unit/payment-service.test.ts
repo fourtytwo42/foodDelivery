@@ -260,6 +260,199 @@ describe('paymentService', () => {
     })
   })
 
+  describe('processStripePayment', () => {
+    it('should handle errors when creating customer', async () => {
+      const mockOrder = {
+        id: 'order1',
+        total: 20.0,
+      }
+
+      ;(prisma.order.findUnique as jest.Mock).mockResolvedValue(mockOrder)
+      ;(stripeService.getOrCreateCustomer as jest.Mock).mockRejectedValue(
+        new Error('Stripe error')
+      )
+
+      const result = await paymentService.processPayment({
+        orderId: 'order1',
+        amount: 20.0,
+        paymentMethod: 'STRIPE',
+        customerEmail: 'test@example.com',
+      })
+
+      expect(result.success).toBe(false)
+      expect(result.error).toContain('Stripe')
+    })
+
+    it('should process Stripe payment without customer', async () => {
+      const mockOrder = {
+        id: 'order1',
+        total: 20.0,
+      }
+
+      const mockPaymentIntent = {
+        paymentIntentId: 'pi_123',
+        clientSecret: 'pi_123_secret',
+        status: 'requires_payment_method',
+      }
+
+      const mockPayment = {
+        id: 'payment1',
+        orderId: 'order1',
+        status: 'PROCESSING',
+      }
+
+      ;(prisma.order.findUnique as jest.Mock).mockResolvedValue(mockOrder)
+      ;(stripeService.createPaymentIntent as jest.Mock).mockResolvedValue(
+        mockPaymentIntent
+      )
+      ;(prisma.payment.create as jest.Mock).mockResolvedValue(mockPayment)
+
+      const result = await paymentService.processPayment({
+        orderId: 'order1',
+        amount: 20.0,
+        paymentMethod: 'STRIPE',
+      })
+
+      expect(result.success).toBe(true)
+      expect(result.paymentIntentId).toBe('pi_123')
+      expect(stripeService.getOrCreateCustomer).not.toHaveBeenCalled()
+    })
+
+    it('should handle errors in processStripePayment', async () => {
+      const mockOrder = {
+        id: 'order1',
+        total: 20.0,
+      }
+
+      ;(prisma.order.findUnique as jest.Mock).mockResolvedValue(mockOrder)
+      ;(stripeService.createPaymentIntent as jest.Mock).mockRejectedValue(
+        new Error('Stripe API error')
+      )
+
+      const result = await paymentService.processPayment({
+        orderId: 'order1',
+        amount: 20.0,
+        paymentMethod: 'STRIPE',
+      })
+
+      expect(result.success).toBe(false)
+      expect(result.error).toContain('Stripe')
+    })
+
+    it('should update order when payment succeeds immediately', async () => {
+      const mockOrder = {
+        id: 'order1',
+        total: 20.0,
+      }
+
+      const mockPaymentIntent = {
+        paymentIntentId: 'pi_123',
+        clientSecret: 'pi_123_secret',
+        status: 'succeeded',
+      }
+
+      const mockPayment = {
+        id: 'payment1',
+        orderId: 'order1',
+        status: 'COMPLETED',
+      }
+
+      ;(prisma.order.findUnique as jest.Mock).mockResolvedValue(mockOrder)
+      ;(stripeService.createPaymentIntent as jest.Mock).mockResolvedValue(
+        mockPaymentIntent
+      )
+      ;(prisma.payment.create as jest.Mock).mockResolvedValue(mockPayment)
+      ;(prisma.order.update as jest.Mock).mockResolvedValue({})
+
+      const result = await paymentService.processPayment({
+        orderId: 'order1',
+        amount: 20.0,
+        paymentMethod: 'STRIPE',
+      })
+
+      expect(result.success).toBe(true)
+      expect(prisma.order.update).toHaveBeenCalledWith({
+        where: { id: 'order1' },
+        data: { paymentStatus: 'PAID' },
+      })
+    })
+  })
+
+  describe('confirmPaymentIntent', () => {
+    it('should handle payment not found', async () => {
+      ;(prisma.payment.findFirst as jest.Mock).mockResolvedValue(null)
+
+      const result = await paymentService.confirmPaymentIntent('pi_123')
+
+      expect(result.success).toBe(false)
+      expect(result.error).toBe('Payment record not found')
+    })
+
+    it('should handle requires_action status', async () => {
+      const mockPayment = {
+        id: 'payment1',
+        orderId: 'order1',
+        paymentIntentId: 'pi_123',
+      }
+
+      const mockPaymentIntent = {
+        id: 'pi_123',
+        status: 'requires_action',
+      }
+
+      ;(prisma.payment.findFirst as jest.Mock).mockResolvedValue(mockPayment)
+      ;(stripeService.confirmPaymentIntent as jest.Mock).mockResolvedValue(
+        mockPaymentIntent
+      )
+      ;(prisma.payment.update as jest.Mock).mockResolvedValue({})
+
+      const result = await paymentService.confirmPaymentIntent('pi_123')
+
+      expect(result.success).toBe(false)
+      expect(result.requiresAction).toBe(true)
+      expect(prisma.payment.update).toHaveBeenCalledWith({
+        where: { id: 'payment1' },
+        data: expect.objectContaining({
+          status: 'PROCESSING',
+        }),
+      })
+    })
+  })
+
+  describe('createRefund', () => {
+    it('should return error if payment not found', async () => {
+      ;(prisma.payment.findUnique as jest.Mock).mockResolvedValue(null)
+
+      const result = await paymentService.createRefund('payment1')
+
+      expect(result.success).toBe(false)
+      expect(result.error).toBe('Payment not found')
+    })
+
+    it('should create partial refund', async () => {
+      const mockPayment = {
+        id: 'payment1',
+        orderId: 'order1',
+        paymentIntentId: 'pi_123',
+        paymentMethod: 'STRIPE',
+      }
+
+      const mockRefund = {
+        id: 'refund_123',
+      }
+
+      ;(prisma.payment.findUnique as jest.Mock).mockResolvedValue(mockPayment)
+      ;(stripeService.createRefund as jest.Mock).mockResolvedValue(mockRefund)
+      ;(prisma.payment.update as jest.Mock).mockResolvedValue({})
+      ;(prisma.order.update as jest.Mock).mockResolvedValue({})
+
+      const result = await paymentService.createRefund('payment1', 10.0)
+
+      expect(result.success).toBe(true)
+      expect(stripeService.createRefund).toHaveBeenCalledWith('pi_123', 1000) // 10.0 * 100 cents
+    })
+  })
+
   describe('getPaymentById', () => {
     it('should fetch payment by id', async () => {
       const mockPayment = {

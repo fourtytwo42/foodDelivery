@@ -131,6 +131,57 @@ describe('Payments API Routes', () => {
       expect(response.status).toBe(400)
       expect(data.error).toBe('Validation error')
     })
+
+    it('should handle processing errors', async () => {
+      ;(paymentService.processPayment as jest.Mock).mockRejectedValue(
+        new Error('Service error')
+      )
+
+      const paymentData = {
+        orderId: 'order1',
+        amount: 20.0,
+        paymentMethod: 'STRIPE',
+      }
+
+      const request = createMockRequest(
+        'http://localhost:3000/api/payments',
+        paymentData,
+        'POST'
+      )
+      const response = await processPayment(request)
+      const data = await response.json()
+
+      expect(response.status).toBe(500)
+      expect(data.error).toBe('Failed to process payment')
+    })
+
+    it('should handle unsupported payment methods', async () => {
+      const mockResult = {
+        success: false,
+        error: 'Payment method PAYPAL not yet implemented',
+      }
+
+      ;(paymentService.processPayment as jest.Mock).mockResolvedValue(
+        mockResult
+      )
+
+      const paymentData = {
+        orderId: 'order1',
+        amount: 20.0,
+        paymentMethod: 'PAYPAL',
+      }
+
+      const request = createMockRequest(
+        'http://localhost:3000/api/payments',
+        paymentData,
+        'POST'
+      )
+      const response = await processPayment(request)
+      const data = await response.json()
+
+      expect(response.status).toBe(400)
+      expect(data.error).toContain('not yet implemented')
+    })
   })
 
   describe('POST /api/payments/confirm', () => {
@@ -162,6 +213,39 @@ describe('Payments API Routes', () => {
       expect(data.paymentIntentId).toBe('pi_123')
     })
 
+    it('should confirm a payment intent with payment method', async () => {
+      const mockResult = {
+        success: true,
+        paymentId: 'payment1',
+        paymentIntentId: 'pi_123',
+        requiresAction: false,
+      }
+
+      ;(paymentService.confirmPaymentIntent as jest.Mock).mockResolvedValue(
+        mockResult
+      )
+
+      const confirmData = {
+        paymentIntentId: 'pi_123',
+        paymentMethodId: 'pm_123',
+      }
+
+      const request = createMockRequest(
+        'http://localhost:3000/api/payments/confirm',
+        confirmData,
+        'POST'
+      )
+      const response = await confirmPayment(request)
+      const data = await response.json()
+
+      expect(response.status).toBe(200)
+      expect(data.success).toBe(true)
+      expect(paymentService.confirmPaymentIntent).toHaveBeenCalledWith(
+        'pi_123',
+        'pm_123'
+      )
+    })
+
     it('should return error for failed confirmation', async () => {
       const mockResult = {
         success: false,
@@ -186,6 +270,44 @@ describe('Payments API Routes', () => {
 
       expect(response.status).toBe(400)
       expect(data.error).toBe('Payment confirmation failed')
+    })
+
+    it('should validate required fields', async () => {
+      const invalidData = {
+        // Missing paymentIntentId
+      }
+
+      const request = createMockRequest(
+        'http://localhost:3000/api/payments/confirm',
+        invalidData,
+        'POST'
+      )
+      const response = await confirmPayment(request)
+      const data = await response.json()
+
+      expect(response.status).toBe(400)
+      expect(data.error).toBe('Validation error')
+    })
+
+    it('should handle errors', async () => {
+      ;(paymentService.confirmPaymentIntent as jest.Mock).mockRejectedValue(
+        new Error('Service error')
+      )
+
+      const confirmData = {
+        paymentIntentId: 'pi_123',
+      }
+
+      const request = createMockRequest(
+        'http://localhost:3000/api/payments/confirm',
+        confirmData,
+        'POST'
+      )
+      const response = await confirmPayment(request)
+      const data = await response.json()
+
+      expect(response.status).toBe(500)
+      expect(data.error).toBe('Failed to confirm payment')
     })
   })
 })

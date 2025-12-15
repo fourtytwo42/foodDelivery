@@ -16,6 +16,8 @@ const customJestConfig = {
     'app/login/**/*.{js,jsx,ts,tsx}',
     'app/register/**/*.{js,jsx,ts,tsx}',
     'lib/**/*.{js,jsx,ts,tsx}',
+    'services/**/*.{js,jsx,ts,tsx}',
+    'stores/**/*.{js,jsx,ts,tsx}',
     '!**/*.d.ts',
     '!**/node_modules/**',
     '!**/.next/**',
@@ -23,6 +25,9 @@ const customJestConfig = {
     '!app/layout.tsx',
     '!app/page.tsx',
     '!app/dashboard/**',
+    '!app/checkout/**', // Tested via E2E
+    '!app/order/**', // Tested via E2E
+    '!app/api/payments/webhook/route.ts', // Webhook tested manually/integration
   ],
   coverageThreshold: {
     global: {

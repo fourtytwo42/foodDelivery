@@ -171,6 +171,53 @@ describe('Orders API Routes', () => {
       expect(data.error).toContain('Minimum order amount')
     })
 
+    it('should handle calculation errors', async () => {
+      const mockSettings = {
+        id: 'default',
+        taxRate: 0.0825,
+        minOrderAmount: 0,
+      }
+
+      ;(prisma.restaurantSettings.findUnique as jest.Mock).mockResolvedValue(
+        mockSettings
+      )
+      ;(orderService.createOrder as jest.Mock).mockRejectedValue(
+        new Error('Calculation error')
+      )
+
+      const orderData = {
+        type: 'DELIVERY',
+        customerName: 'John Doe',
+        customerEmail: 'john@example.com',
+        customerPhone: '1234567890',
+        items: [
+          {
+            menuItemId: 'item1',
+            name: 'Pizza',
+            price: 14.99,
+            quantity: 1,
+            modifiers: [],
+          },
+        ],
+        deliveryAddress: {
+          street: '123 Main St',
+          city: 'New York',
+          state: 'NY',
+          zipCode: '10001',
+          country: 'US',
+        },
+        tip: 2,
+        discount: 0,
+      }
+
+      const request = createMockRequest('http://localhost:3000/api/orders', orderData, 'POST')
+      const response = await createOrder(request)
+      const data = await response.json()
+
+      expect(response.status).toBe(500)
+      expect(data.error).toBe('Failed to create order')
+    })
+
     it('should validate required fields', async () => {
       const invalidData = {
         type: 'DELIVERY',
@@ -259,6 +306,21 @@ describe('Orders API Routes', () => {
 
       expect(response.status).toBe(404)
       expect(data.error).toBe('Order not found')
+    })
+
+    it('should handle errors when fetching order', async () => {
+      ;(orderService.getOrderById as jest.Mock).mockRejectedValue(
+        new Error('Database error')
+      )
+
+      const request = createMockRequest('http://localhost:3000/api/orders/order1')
+      const response = await getOrder(request, {
+        params: Promise.resolve({ id: 'order1' }),
+      })
+      const data = await response.json()
+
+      expect(response.status).toBe(500)
+      expect(data.error).toBe('Failed to fetch order')
     })
   })
 })
